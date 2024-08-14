@@ -1,8 +1,13 @@
 version: '3'
 services:
   discord-bot:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     environment:
       - CLIENT_TOKEN=${CLIENT_TOKEN}
     volumes:
       - .:/app
+    ports:
+      - "5000:5000"  # Adjust port mappings as needed
+
