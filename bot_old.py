@@ -1,3 +1,4 @@
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -8,6 +9,7 @@ from dotenv import load_dotenv
 import urllib.parse
 import urllib.request
 import re
+
 
 def MusicBot():
     load_dotenv()
@@ -55,9 +57,12 @@ def MusicBot():
 
             try:
                 if youtube_base_url not in link:
-                    query_string = urllib.parse.urlencode({'search_query': link})
-                    content = urllib.request.urlopen(youtube_results_url + query_string)
-                    search_results = re.findall(r'/watch\?v=(.{11})', content.read().decode())
+                    query_string = urllib.parse.urlencode(
+                        {'search_query': link})
+                    content = urllib.request.urlopen(
+                        youtube_results_url + query_string)
+                    search_results = re.findall(
+                        r'/watch\?v=(.{11})', content.read().decode())
                     link = youtube_watch_url + search_results[0]
 
                 loop = asyncio.get_event_loop()
@@ -70,7 +75,8 @@ def MusicBot():
                     queues[interaction.guild.id].append(link)
                     await interaction.response.send_message("Dodano do kolejki!")
                 else:
-                    voice_clients[interaction.guild.id].play(player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
+                    voice_clients[interaction.guild.id].play(
+                        player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
             except Exception as e:
                 print(e)
                 await interaction.response.send_message("Wystąpił błąd podczas odtwarzania piosenki.")
@@ -133,4 +139,3 @@ def MusicBot():
             await interaction.response.send_message("Nie odtwarzana jest żadna piosenka.")
 
     client.run(TOKEN)
-
