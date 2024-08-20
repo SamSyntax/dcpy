@@ -1,4 +1,3 @@
-
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -28,7 +27,7 @@ def MusicBot():
 
     ffmpeg_options = {
         'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin',
-        'options': '-vn -loglevel panic'  # Reduces ffmpeg logging noise
+        'options': '-vn -loglevel panic'
     }
 
     @client.event
@@ -76,17 +75,23 @@ def MusicBot():
 
                 if ctx.guild.id in voice_clients and voice_clients[ctx.guild.id].is_playing():
                     queues[ctx.guild.id].append(link)
-                    await ctx.send("Dodano do kolejki!")
+                    embed = discord.Embed(
+                        title="Dodano do kolejki", description=link, color=discord.Color.blue())
+                    await ctx.send(embed=embed)
                 else:
                     voice_clients[ctx.guild.id].play(
                         player, after=lambda e: asyncio.run_coroutine_threadsafe(play_next(ctx), client.loop))
-                    await ctx.send(f"Teraz gramy: {link}")
+                    embed = discord.Embed(
+                        title="Teraz gramy", description=link, color=discord.Color.green())
+                    await ctx.send(embed=embed)
                 break
             except Exception as e:
                 print(f"Attempt {attempt + 1} failed: {e}")
                 attempt += 1
                 if attempt >= retries:
-                    await ctx.send("Nie udało się odtworzyć piosenki po kilku próbach.")
+                    embed = discord.Embed(
+                        title="Błąd", description="Nie udało się odtworzyć piosenki po kilku próbach.", color=discord.Color.red())
+                    await ctx.send(embed=embed)
                 else:
                     await asyncio.sleep(2)
 
@@ -97,50 +102,75 @@ def MusicBot():
         if interaction.guild.id not in queues:
             queues[interaction.guild.id] = []
 
-        if interaction.guild.id not in voice_clients or not voice_clients[interaction.guild.id].is_playing():
+        if interaction.guild.id not in voice_clients:
             try:
                 voice_client = await interaction.user.voice.channel.connect()
-                voice_clients[voice_client.guild.id] = voice_client
-                await play_song(ctx, link)
-                await interaction.followup.send("Teraz gramy!")
+                voice_clients[interaction.guild.id] = voice_client
             except Exception as e:
                 print(e)
-                await interaction.followup.send("Nie mogę dołączyć do kanału głosowego.")
+                embed = discord.Embed(
+                    title="Błąd", description="Nie mogę dołączyć do kanału głosowego.", color=discord.Color.red())
+                await interaction.followup.send(embed=embed)
+                return
+
+        if not voice_clients[interaction.guild.id].is_playing():
+            await play_song(ctx, link)
+            embed = discord.Embed(
+                title="Odtwarzanie", description="Teraz gramy!", color=discord.Color.green())
+            await interaction.followup.send(embed=embed)
         else:
             queues[interaction.guild.id].append(link)
-            await interaction.followup.send("Dodano do kolejki!")
+            embed = discord.Embed(title="Dodano do kolejki",
+                                  description=link, color=discord.Color.blue())
+            await interaction.followup.send(embed=embed)
 
     @client.tree.command(name="clear_queue", description="Clears the queue")
     async def clear_queue(interaction: discord.Interaction):
         if interaction.guild.id in queues:
             queues[interaction.guild.id].clear()
-            await interaction.response.send_message("Kolejka została wyczyszczona!")
+            embed = discord.Embed(
+                title="Kolejka", description="Kolejka została wyczyszczona!", color=discord.Color.blue())
+            await interaction.response.send_message(embed=embed)
         else:
-            await interaction.response.send_message("Brak kolejki do wyczyszczenia.")
+            embed = discord.Embed(
+                title="Kolejka", description="Brak kolejki do wyczyszczenia.", color=discord.Color.yellow())
+            await interaction.response.send_message(embed=embed)
 
     @client.tree.command(name="pause", description="Pauses the current song")
     async def pause(interaction: discord.Interaction):
         try:
             if interaction.guild.id in voice_clients and voice_clients[interaction.guild.id].is_playing():
                 voice_clients[interaction.guild.id].pause()
-                await interaction.response.send_message("Wstrzymano odtwarzanie!")
+                embed = discord.Embed(
+                    title="Odtwarzanie wstrzymane", color=discord.Color.orange())
+                await interaction.response.send_message(embed=embed)
             else:
-                await interaction.response.send_message("Nie odtwarzana jest żadna piosenka.")
+                embed = discord.Embed(
+                    title="Błąd", description="Nie odtwarzana jest żadna piosenka.", color=discord.Color.red())
+                await interaction.response.send_message(embed=embed)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Wystąpił błąd podczas wstrzymywania odtwarzania.")
+            embed = discord.Embed(
+                title="Błąd", description="Wystąpił błąd podczas wstrzymywania odtwarzania.", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
 
     @client.tree.command(name="resume", description="Resumes the current song")
     async def resume(interaction: discord.Interaction):
         try:
             if interaction.guild.id in voice_clients and not voice_clients[interaction.guild.id].is_playing():
                 voice_clients[interaction.guild.id].resume()
-                await interaction.response.send_message("Wznowiono odtwarzanie!")
+                embed = discord.Embed(
+                    title="Odtwarzanie wznowione", color=discord.Color.green())
+                await interaction.response.send_message(embed=embed)
             else:
-                await interaction.response.send_message("Nie ma piosenki do wznowienia.")
+                embed = discord.Embed(
+                    title="Błąd", description="Nie ma piosenki do wznowienia.", color=discord.Color.red())
+                await interaction.response.send_message(embed=embed)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Wystąpił błąd podczas wznawiania odtwarzania.")
+            embed = discord.Embed(
+                title="Błąd", description="Wystąpił błąd podczas wznawiania odtwarzania.", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
 
     @client.tree.command(name="stop", description="Stops the player")
     async def stop(interaction: discord.Interaction):
@@ -149,32 +179,48 @@ def MusicBot():
                 voice_clients[interaction.guild.id].stop()
                 await voice_clients[interaction.guild.id].disconnect()
                 del voice_clients[interaction.guild.id]
-                await interaction.response.send_message("Zatrzymano i rozłączono!")
+                embed = discord.Embed(title="Odtwarzanie zatrzymane",
+                                      description="Zatrzymano i rozłączono!", color=discord.Color.red())
+                await interaction.response.send_message(embed=embed)
             else:
-                await interaction.response.send_message("Nie ma aktywnego odtwarzacza.")
+                embed = discord.Embed(
+                    title="Błąd", description="Nie ma aktywnego odtwarzacza.", color=discord.Color.red())
+                await interaction.response.send_message(embed=embed)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Wystąpił błąd podczas zatrzymywania.")
+            embed = discord.Embed(
+                title="Błąd", description="Wystąpił błąd podczas zatrzymywania.", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
 
     @client.tree.command(name="queue", description="Displays all enqueued songs")
     async def queue(interaction: discord.Interaction):
         if interaction.guild.id in queues and queues[interaction.guild.id]:
             queue_list = "\n".join(queues[interaction.guild.id])
-            await interaction.response.send_message(f"Obecna kolejka:\n{queue_list}")
+            embed = discord.Embed(
+                title="Obecna kolejka", description=queue_list, color=discord.Color.blue())
+            await interaction.response.send_message(embed=embed)
         else:
-            await interaction.response.send_message("Kolejka jest pusta.")
+            embed = discord.Embed(
+                title="Kolejka", description="Kolejka jest pusta.", color=discord.Color.yellow())
+            await interaction.response.send_message(embed=embed)
 
     @client.tree.command(name="skip", description="Skips the current song and plays the next in the queue")
     async def skip(interaction: discord.Interaction):
         try:
             if interaction.guild.id in voice_clients and voice_clients[interaction.guild.id].is_playing():
                 voice_clients[interaction.guild.id].stop()
-                await interaction.response.send_message("Piosenka została pominięta!")
+                embed = discord.Embed(
+                    title="Pominięto", description="Piosenka została pominięta!", color=discord.Color.orange())
+                await interaction.response.send_message(embed=embed)
                 await play_next(interaction)
             else:
-                await interaction.response.send_message("Nie odtwarzana jest żadna piosenka.")
+                embed = discord.Embed(
+                    title="Błąd", description="Nie odtwarzana jest żadna piosenka.", color=discord.Color.red())
+                await interaction.response.send_message(embed=embed)
         except Exception as e:
             print(e)
-            await interaction.response.send_message("Wystąpił błąd podczas pomijania piosenki.")
+            embed = discord.Embed(
+                title="Błąd", description="Wystąpił błąd podczas pomijania piosenki.", color=discord.Color.red())
+            await interaction.response.send_message(embed=embed)
 
     client.run(TOKEN)
