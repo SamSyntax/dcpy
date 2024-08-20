@@ -1,3 +1,4 @@
+
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -91,9 +92,9 @@ def MusicBot():
 
     @client.tree.command(name="play", description="Plays a song from YouTube")
     async def play(interaction: discord.Interaction, *, link: str):
+        await interaction.response.defer()
         ctx = await client.get_context(interaction)
         if interaction.guild.id not in queues:
-            # Initialize queue if it doesn't exist
             queues[interaction.guild.id] = []
 
         if interaction.guild.id not in voice_clients or not voice_clients[interaction.guild.id].is_playing():
@@ -101,12 +102,13 @@ def MusicBot():
                 voice_client = await interaction.user.voice.channel.connect()
                 voice_clients[voice_client.guild.id] = voice_client
                 await play_song(ctx, link)
+                await interaction.followup.send("Teraz gramy!")
             except Exception as e:
                 print(e)
-                await interaction.response.send_message("Nie mogę dołączyć do kanału głosowego.")
+                await interaction.followup.send("Nie mogę dołączyć do kanału głosowego.")
         else:
             queues[interaction.guild.id].append(link)
-            await interaction.response.send_message("Dodano do kolejki!")
+            await interaction.followup.send("Dodano do kolejki!")
 
     @client.tree.command(name="clear_queue", description="Clears the queue")
     async def clear_queue(interaction: discord.Interaction):
@@ -164,11 +166,15 @@ def MusicBot():
 
     @client.tree.command(name="skip", description="Skips the current song and plays the next in the queue")
     async def skip(interaction: discord.Interaction):
-        if interaction.guild.id in voice_clients and voice_clients[interaction.guild.id].is_playing():
-            voice_clients[interaction.guild.id].stop()
-            await interaction.response.send_message("Piosenka została pominięta!")
-            await play_next(interaction)
-        else:
-            await interaction.response.send_message("Nie odtwarzana jest żadna piosenka.")
+        try:
+            if interaction.guild.id in voice_clients and voice_clients[interaction.guild.id].is_playing():
+                voice_clients[interaction.guild.id].stop()
+                await interaction.response.send_message("Piosenka została pominięta!")
+                await play_next(interaction)
+            else:
+                await interaction.response.send_message("Nie odtwarzana jest żadna piosenka.")
+        except Exception as e:
+            print(e)
+            await interaction.response.send_message("Wystąpił błąd podczas pomijania piosenki.")
 
     client.run(TOKEN)
