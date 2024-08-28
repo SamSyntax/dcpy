@@ -18,6 +18,7 @@ def MusicBot():
     client = commands.Bot(command_prefix=".", intents=intents)
 
     queues = {}
+    inactivity_timers = {}
     voice_clients = {}
     youtube_base_url = 'https://www.youtube.com/'
     youtube_results_url = youtube_base_url + 'results?'
@@ -48,6 +49,20 @@ def MusicBot():
         if queues[ctx.guild.id]:
             next_song = queues[ctx.guild.id].pop(0)
             await play_song(ctx, next_song)
+
+    async def start_inactivity_timer(ctx):
+        await asyncio.sleep(10)
+        if ctx.guild.id in voice_clients and not voice_clients[ctx.guild.id].is_playing():
+            await voice_clients[ctx.guild.id].disconnect()
+            del voice_clients[ctx.guild.id]
+            del inactivity_timers[ctx.guild.id]
+            print(f"Disconnected from {ctx.guild.name} due to inactivity.")
+
+    async def reset_inactivity_timer(ctx):
+        if ctx.guild.id in inactivity_timers:
+            inactivity_timers[ctx.guild.id].cancel()
+        inactivity_timers[ctx.guild.id] = asyncio.create_task(
+            start_inactivity_timer(ctx))
 
     async def play_song(ctx, link: str, retries=3):
         """Plays a song with retry logic."""
@@ -123,6 +138,7 @@ def MusicBot():
             embed = discord.Embed(title="Dodano do kolejki",
                                   description=link, color=discord.Color.blue())
             await interaction.followup.send(embed=embed)
+        await reset_inactivity_timer(ctx)
 
     @client.tree.command(name="clear_queue", description="Clears the queue")
     async def clear_queue(interaction: discord.Interaction):
