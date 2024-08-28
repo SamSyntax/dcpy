@@ -51,7 +51,7 @@ def MusicBot():
             await play_song(ctx, next_song)
 
     async def start_inactivity_timer(ctx):
-        await asyncio.sleep(10)
+        await asyncio.sleep(180)
         if ctx.guild.id in voice_clients and not voice_clients[ctx.guild.id].is_playing():
             await voice_clients[ctx.guild.id].disconnect()
             del voice_clients[ctx.guild.id]
